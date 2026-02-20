@@ -1,6 +1,5 @@
-# Test Infra WorldScore
+# 模型推理评测
 
-该目录是原有 infra 目录的重命名版本。脚本均以本目录为基准解析路径，可移动或改名。
 
 ## 快速开始
 
@@ -99,6 +98,7 @@ bash /ML-vePFS/research_gen/tja/test_infra_worldscore/infra.sh \
 
 ---
 
+# 单Case推理评测
 
 ### 测试部分样本的部分指标 
 1. 确认模型config 文件runs_root
