@@ -94,3 +94,67 @@ bash /ML-vePFS/research_gen/tja/test_infra_worldscore/infra.sh \
     run_eval.sh
     evaluate_filtered.py
 ```
+
+
+
+---
+
+
+### 测试部分样本的部分指标 
+1. 确认模型config 文件runs_root
+.env 指定worldscore_output所在路径 MODEL_PATH
+export $(grep -v '^#' .env | xargs)  
+
+MODEL_PATH/
+└── runs_root/
+    └── worldscore_output/
+
+2. 测部分的指标
+## 命令
+python /ML-vePFS/research_gen/tja/WorldScore/run_evaluate_parallel.py \
+--model_name fantasy_world \
+--myaspect_list "context_alignment,3d_consistency"
+## 参数说明
+--model_name 加载模型对应路径
+--myaspect_list 要测试的指标，用逗号连接为字符串,必须包含在以下指标内
+                如果不指定，默认为None,测试全部指标
+
+## 输出
+每个样本的evaluation.json
+
+
+
+    aspect_list = {
+    #         "static": [
+    #             # Control
+    #             "camera_control",
+    #             "object_control",
+    #             "content_alignment",
+    #             # Quality
+    #             "3d_consistency",
+    #             "photometric_consistency",
+    #             "style_consistency",
+    #             "subjective_quality",
+    #         ],
+    #         # Dynamics
+    #         "dynamic": [
+    #             "motion_accuracy",
+    #             "motion_magnitude",
+    #             "motion_smoothness",
+    #         ],
+    #     }
+
+
+
+### 测试一个样本的全部指标 
+
+## 命令
+python /ML-vePFS/research_gen/tja/WorldScore/run_evaluate_one_case.py
+--model_name fantasy_world \
+--video_dir "/ML-vePFS/research_gen/tja/worldscore_output/static/photorealistic/indoor/dining_spaces/049"
+
+
+## 输出
+每个样本的evaluation.json
+
+
