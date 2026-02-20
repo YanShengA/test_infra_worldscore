@@ -6,8 +6,29 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 export HF_HOME=/root/.cache/huggingface
+export HF_HUB_CACHE=/root/.cache/huggingface/hub
+export TRANSFORMERS_CACHE=/root/.cache/huggingface/hub
+echo "HF_HOME=$HF_HOME"
+echo "HF_HUB_CACHE=$HF_HUB_CACHE"
+echo "TRANSFORMERS_CACHE=$TRANSFORMERS_CACHE"
 export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
+export TORCHELASTIC_EXIT_BARRIER_TIMEOUT=3600
+if [[ -z "${MASTER_ADDR:-}" && -n "${MLP_WORKER_0_HOST:-}" ]]; then
+  export MASTER_ADDR="$MLP_WORKER_0_HOST"
+fi
+if [[ -z "${MASTER_PORT:-}" && -n "${MLP_WORKER_0_PORT:-}" ]]; then
+  export MASTER_PORT="$MLP_WORKER_0_PORT"
+fi
+if [[ -z "${NNODES:-}" && -n "${MLP_WORKER_NUM:-}" ]]; then
+  export NNODES="$MLP_WORKER_NUM"
+fi
+if [[ -z "${NODE_RANK:-}" && -n "${MLP_ROLE_INDEX:-}" ]]; then
+  export NODE_RANK="$MLP_ROLE_INDEX"
+fi
+if [[ -z "${NPROC_PER_NODE:-}" && -n "${MLP_WORKER_GPU:-}" ]]; then
+  export NPROC_PER_NODE="$MLP_WORKER_GPU"
+fi
 CONFIG_YAML="$1"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESOLVED_JSON="$ROOT_DIR/output/resolved_config.json"
@@ -50,8 +71,13 @@ fi
 export WORLDSCORE_PATH
 export DATA_PATH
 
-LOG_DIR="$RUN_LOGS_DIR"
-rm -rf "$LOG_DIR"
+NODE_RANK_VALUE=${NODE_RANK:-0}
+NNODES_VALUE=${NNODES:-1}
+LOG_DIR_BASE="$RUN_LOGS_DIR"
+LOG_DIR="$LOG_DIR_BASE/node_${NODE_RANK_VALUE}"
+if [[ "$NODE_RANK_VALUE" == "0" && "$NNODES_VALUE" -le 1 ]]; then
+  rm -rf "$LOG_DIR_BASE"
+fi
 mkdir -p "$LOG_DIR"
 exec > >(tee -a "$LOG_DIR/infra.log") 2>&1
 

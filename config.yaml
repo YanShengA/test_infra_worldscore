@@ -1,7 +1,7 @@
 run:
   name: "wan720720"
   output_root: "/ML-vePFS/research_gen/tja/test_infra_worldscore/output/wan720720"
-  mode: eval-only
+  mode: full
 env:
   worldscore_path: "/ML-vePFS/research_gen/tja"
   data_path: "/ML-vePFS/research_gen/tja/WorldScore/data"
@@ -23,7 +23,7 @@ worldscore:
   model_name: "wan720720"
   runs_root_base: "/ML-vePFS/research_gen/tja/test_infra_worldscore/output"
   output_dir: "worldscore_output"
-  sampled_json_path: "/ML-vePFS/research_gen/tja/WorldScore/data/sampled_worldscore.json"
+  sampled_json_path: "/ML-vePFS/research_gen/tja/WorldScore/data/sampled_worldscore_01.json"
   visual_movement: ["static", "dynamic"]
   config_overrides:
     frames: 81
@@ -51,5 +51,5 @@ compute:
   num_gpus: 8
   infer_use_dp: true
   eval_num_jobs: 8
-  eval_use_slurm: false
   slurm_params: {}
+  eval_auto_mean: true

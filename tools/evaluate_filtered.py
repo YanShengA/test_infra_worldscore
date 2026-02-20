@@ -195,6 +195,9 @@ def main() -> None:
     parser.add_argument("--num-jobs", type=int, default=1)
     parser.add_argument("--only-calc-mean", action="store_true")
     parser.add_argument("--delete-calculated", action="store_true")
+    parser.add_argument("--num-shards", type=int, default=1)
+    parser.add_argument("--shard-index", type=int, default=0)
+    parser.add_argument("--skip-mean", action="store_true")
     args = parser.parse_args()
 
     with open(args.config_json, "r", encoding="utf-8") as f:
@@ -257,6 +260,14 @@ def main() -> None:
             print(f"No instances found for {visual_movement}")
             continue
 
+        if args.num_shards > 1:
+            if args.shard_index < 0 or args.shard_index >= args.num_shards:
+                raise ValueError(f"Invalid shard-index {args.shard_index} for num-shards {args.num_shards}")
+            instances = [inst for idx, inst in enumerate(instances) if idx % args.num_shards == args.shard_index]
+            if not instances:
+                print(f"No instances for shard {args.shard_index}/{args.num_shards} ({visual_movement})")
+                continue
+
         if args.only_calc_mean:
             _calculate_existing_mean(evaluator.root_path, aspect_list)
             continue
@@ -307,14 +318,15 @@ def main() -> None:
         for result in batch_results:
             deep_update(evaluator.metrics_results, result)
 
-        metrics_results = defaultdict(lambda: defaultdict(list))
-        _collect_metrics(evaluator.root_path, metrics_results)
-        output_path = os.path.join(
-            config["runs_root"],
-            config["output_dir"],
-            f"worldscore_filtered_{visual_movement}.json",
-        )
-        _calculate_mean_scores(metrics_results, aspect_list, output_path)
+        if not args.skip_mean:
+            metrics_results = defaultdict(lambda: defaultdict(list))
+            _collect_metrics(evaluator.root_path, metrics_results)
+            output_path = os.path.join(
+                config["runs_root"],
+                config["output_dir"],
+                f"worldscore_filtered_{visual_movement}.json",
+            )
+            _calculate_mean_scores(metrics_results, aspect_list, output_path)
 
 
 def _collect_metrics(root_path, metrics_results):

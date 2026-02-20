@@ -9,10 +9,6 @@
 2) 运行 infra 脚本：
 
 ```bash
-export HF_HOME=/root/.cache/huggingface
-export TRANSFORMERS_OFFLINE=1
-export HF_HUB_OFFLINE=1
-
 bash /ML-vePFS/research_gen/tja/test_infra_worldscore/infra.sh \
   /ML-vePFS/research_gen/tja/test_infra_worldscore/config.yaml
 ```
@@ -21,7 +17,7 @@ bash /ML-vePFS/research_gen/tja/test_infra_worldscore/infra.sh \
 
 ### 1) 配置文件
 
-主要配置文件：
+主要配置文件（参考用，对于每个任务建议自己写一份）：
 - `config.yaml` 用于默认流程
 - `config_eval_only.yaml` 仅评测使用
 
@@ -36,8 +32,9 @@ bash /ML-vePFS/research_gen/tja/test_infra_worldscore/infra.sh \
 - `worldscore.runs_root_base`: 模型输出根目录
 - `worldscore.output_dir`: 输出子目录（相对路径）
 - `worldscore.sampled_json_path`: 采样数据集 json
-- `compute.num_gpus`: 推理使用 GPU 数量
+- `compute.num_gpus`: 推理使用 GPU 数量（单机设置1-8，多节点全部设置为8）
 - `compute.eval_num_jobs`: 评测并行进程数
+- `compute.eval_auto_mean`: 分片评测后是否自动汇总
 
 ### 2) 运行模式
 
@@ -56,24 +53,32 @@ bash /ML-vePFS/research_gen/tja/test_infra_worldscore/infra.sh \
 ### 3) 日志位置
 
 日志输出到：
-- `<run.output_root>/logs/infra.log`
-- `<run.output_root>/logs/infer.log`（运行推理时）
-- `<run.output_root>/logs/eval.log`（运行评测时）
+- `<run.output_root>/logs/node_<rank>/infra.log`
+- `<run.output_root>/logs/node_<rank>/infer.log`（运行推理时）
+- `<run.output_root>/logs/node_<rank>/eval.log`（运行评测时）
 
 示例：
-- `/ML-vePFS/research_gen/tja/test_infra_worldscore/output/wan720720/logs/`
+- `/ML-vePFS/research_gen/tja/test_infra_worldscore/output/wan720720/logs/node_0/`
 
-### 4) 重命名后的路径说明
-
-此 infra 已改为以自身目录解析脚本路径。若再次移动或改名，只需调整配置文件中的路径即可。
-
-### 5) 常见问题
+### 4) 常见问题
 
 - 评测 checkpoint 缺失：
   如果看到 `worldscore/benchmark/metrics/checkpoints` 相关文件缺失报错，请确认 `WorldScore` 仓库中对应权重存在。
 
 - 旧评测结果导致跳过：
   若已有 `evaluation.json` 导致评测被跳过，请删除后再运行评测。
+
+- 多机评测离线报错：
+  多节点时每台机器都需要 HF 缓存中存在 `bert-base-uncased`。建议将 HF 缓存同步到所有节点，或将 `HF_HOME` 指向共享存储。
+
+### 5) 多机环境变量（可选）
+
+如使用集群调度环境，可通过以下变量配置多机推理/评测：
+- `MLP_WORKER_GPU`: 每节点 GPU 数量
+
+脚本也支持标准 `torchrun` 变量：
+- `MASTER_ADDR` / `MASTER_PORT`
+- `NNODES` / `NODE_RANK` / `NPROC_PER_NODE`
 
 ## 目录结构
 
