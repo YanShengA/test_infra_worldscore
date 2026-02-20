@@ -1,0 +1,56 @@
+run:
+  name: "runway_epoch10_static_eval"
+  output_root: "/ML-vePFS/research_gen/tja/test_infra_worldscore/output"
+  mode: "eval-only"
+
+env:
+  worldscore_path: "/ML-vePFS/research_gen/tja"
+  data_path: "/ML-vePFS/research_gen/tja/WorldScore/data"
+  diffsynth_env: "diffsynth"
+  worldscore_env: "/ML-vePFS/research_gen/jmy/jmy_ws/envs_conda/worldscore6"
+
+wan:
+  checkpoint_path: ""
+  base_model_root: ""
+  negative_prompt: ""
+  cfg_scale: 6
+  seed: 0
+  sample_steps: 50
+  fps: 16
+  frames: 81
+  resolution: [720, 720]
+
+worldscore:
+  model_name: "Runway_Epoch10_720720"
+  runs_root_base: "/ML-vePFS/research_gen/WorldScore/WorldScore/models"
+  output_dir: "."
+  sampled_json_path: "/ML-vePFS/research_gen/tja/WorldScore/data/sampled_worldscore.json"
+  visual_movement: ["static"]
+  config_overrides:
+    frames: 81
+    fps: 16
+    resolution: [720, 720]
+    focal_length: 500
+
+filters:
+  enable: false
+  visual_movement: []
+  visual_style: []
+  scene_type: []
+  category: []
+  motion_type: []
+  instance: []
+  image_name: []
+  image_contains: []
+  camera_path_any: []
+
+metrics:
+  aspects: []
+  metrics: []
+
+compute:
+  num_gpus: 8
+  infer_use_dp: false
+  eval_num_jobs: 8
+  eval_use_slurm: false
+  slurm_params: {}
