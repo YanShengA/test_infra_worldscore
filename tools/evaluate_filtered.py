@@ -182,11 +182,19 @@ def _calculate_mean_scores(metrics_results, aspect_list, output_path):
 
 
 def _worker_wrapper(gpu_id, config, instance_batch, aspect_list, visual_movement, queue):
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-    mapped_gpu_id = 0
-    torch.cuda.set_device(mapped_gpu_id)
-    result = process_batch(config, instance_batch, aspect_list, visual_movement)
-    queue.put(result)
+    try:
+        # Bind this worker to a single visible GPU without clobbering os.environ.
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+        mapped_gpu_id = 0
+        torch.cuda.set_device(mapped_gpu_id)
+        # 执行 process_batch，结果会自动写入磁盘，不需要返回字典
+        process_batch(config, instance_batch, aspect_list, visual_movement)
+        # 仅放回一个 True 代表该子进程顺利完成
+        queue.put(True)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        queue.put(False)
 
 
 def main() -> None:
@@ -299,24 +307,24 @@ def main() -> None:
                 processes.append(p)
                 p.start()
 
-            batch_results = []
             for _ in range(active_jobs):
-                batch_results.append(queue.get())
+                success = queue.get()
+                if not success:
+                    print("Warning: A worker failed during evaluation.")
             for p in processes:
                 p.join()
         else:
-            batch_results = [
+            # 单进程下，直接遍历计算，不需要存到列表里
+            for batch in instance_batches:
                 process_batch(
                     config=config,
                     instance_batch=batch,
                     aspect_list=aspect_list,
                     visual_movement=visual_movement,
                 )
-                for batch in instance_batches
-            ]
 
-        for result in batch_results:
-            deep_update(evaluator.metrics_results, result)
+        # 删除了 batch_results 列表和 deep_update(evaluator.metrics_results, result) 循环。
+        # 因为下一行的 _collect_metrics 逻辑会从硬盘重新读取结果来算分。
 
         if not args.skip_mean:
             metrics_results = defaultdict(lambda: defaultdict(list))

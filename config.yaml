@@ -23,7 +23,7 @@ worldscore:
   model_name: "wan720720"
   runs_root_base: "/ML-vePFS/research_gen/tja/test_infra_worldscore/output"
   output_dir: "worldscore_output"
-  sampled_json_path: "/ML-vePFS/research_gen/tja/WorldScore/data/sampled_worldscore_01.json"
+  sampled_json_path: "/ML-vePFS/research_gen/tja/WorldScore/data/sampled_worldscore.json"
   visual_movement: ["static", "dynamic"]
   config_overrides:
     frames: 81
@@ -51,5 +51,6 @@ compute:
   num_gpus: 8
   infer_use_dp: true
   eval_num_jobs: 8
+  eval_num_shards: 2
   slurm_params: {}
   eval_auto_mean: true

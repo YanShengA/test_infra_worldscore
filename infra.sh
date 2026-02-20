@@ -5,12 +5,22 @@ if [[ $# -lt 1 ]]; then
   echo "Usage: $0 /path/to/config.yaml"
   exit 1
 fi
-export HF_HOME=/root/.cache/huggingface
-export HF_HUB_CACHE=/root/.cache/huggingface/hub
-export TRANSFORMERS_CACHE=/root/.cache/huggingface/hub
+export HF_HOME=/ML-vePFS/research_gen/tja/cache/shared_hf_cache
+export HF_HUB_CACHE=/ML-vePFS/research_gen/tja/cache/shared_hf_cache/hub
+export TRANSFORMERS_CACHE=/ML-vePFS/research_gen/tja/cache/shared_hf_cache/hub
+export TORCH_HOME=/ML-vePFS/research_gen/tja/cache/shared_torch_cache
+export CLIP_CACHE_DIR=/ML-vePFS/research_gen/tja/cache/shared_clip_cache
 echo "HF_HOME=$HF_HOME"
 echo "HF_HUB_CACHE=$HF_HUB_CACHE"
 echo "TRANSFORMERS_CACHE=$TRANSFORMERS_CACHE"
+echo "CLIP_CACHE_DIR=$CLIP_CACHE_DIR"
+
+# Setup CLIP cache symlink to use local cached models
+mkdir -p ~/.cache
+rm -f ~/.cache/clip
+ln -s "$CLIP_CACHE_DIR" ~/.cache/clip
+echo "CLIP symlink created: ~/.cache/clip -> $CLIP_CACHE_DIR"
+
 export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
 export TORCHELASTIC_EXIT_BARRIER_TIMEOUT=3600
@@ -114,6 +124,47 @@ if [[ "$RUN_MODE" != "eval-only" ]]; then
   export WORLDSCORE_PATH
   export DATA_PATH
   bash "$ROOT_DIR/tools/run_infer.sh" "$RESOLVED_CONFIG" 2>&1 | tee -a "$LOG_DIR/infer.log"
+fi
+
+if [[ "$RUN_MODE" != "eval-only" && "$RUN_MODE" != "infer-only" && "$NNODES_VALUE" -gt 1 ]]; then
+  INFER_OUTPUT_ROOT=$(python - "$RESOLVED_CONFIG" <<'PY'
+import json
+import sys
+
+cfg_path = sys.argv[1]
+with open(cfg_path, "r", encoding="utf-8") as f:
+  cfg = json.load(f)
+print(cfg.get("run", {}).get("output_root", ""))
+PY
+  )
+  if [[ -z "$INFER_OUTPUT_ROOT" ]]; then
+    echo "run.output_root is required for multi-node inference sync"
+    exit 1
+  fi
+  INFER_DONE_DIR="$INFER_OUTPUT_ROOT/infer_nodes"
+  mkdir -p "$INFER_DONE_DIR"
+  echo "done" > "$INFER_DONE_DIR/node_${NODE_RANK_VALUE}.done"
+  echo "Waiting for all nodes to finish inference..."
+  timeout_sec=${INFER_WAIT_TIMEOUT:-36000}
+  waited=0
+  while [[ "$waited" -lt "$timeout_sec" ]]; do
+    missing=0
+    for i in $(seq 0 $((NNODES_VALUE - 1))); do
+      if [[ ! -f "$INFER_DONE_DIR/node_${i}.done" ]]; then
+        missing=1
+        break
+      fi
+    done
+    if [[ "$missing" -eq 0 ]]; then
+      break
+    fi
+    sleep 10
+    waited=$((waited + 10))
+  done
+  if [[ "$missing" -ne 0 ]]; then
+    echo "Timed out waiting for all nodes to finish inference"
+    exit 1
+  fi
 fi
 
 if [[ "$RUN_MODE" != "infer-only" ]]; then
